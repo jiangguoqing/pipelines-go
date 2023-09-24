@@ -27,13 +27,16 @@ steps:
     command: 'get'
     arguments: '-d'
     workingDirectory: '$(System.DefaultWorkingDirectory)'
-- task: Go@0
-  inputs:
-    command: 'build'
-    workingDirectory: '$(System.DefaultWorkingDirectory)'
-- task: CopyFiles@2
-  inputs:
-    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+- script: |
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+    golangci-lint --version
+    golangci-lint run
+  displayName: 'Install and Run GoLintCLI.'
+
+- script: |
+    go build -v ./...
+  displayName: 'build.'
 - task: PublishBuildArtifacts@1
   inputs:
      artifactName: drop
