@@ -6,37 +6,45 @@
 trigger:
 - main
 
-pool:
-  vmImage: ubuntu-latest
+variables:
+  GO111MODULE: 'on'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+jobs:
+  - job: 'goamqp'
+    displayName: 'Run go-amqp CI Checks'
 
 
-- task: GoTool@0
-  inputs:
-    version: '1.13.5'
-- task: Go@0
-  inputs:
-    command: 'get'
-    arguments: '-d'
-    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    pool:
+      vmImage: ubuntu-latest
 
+    steps:
+      - task: GoTool@0
+        inputs:
+          version: '1.19'
+        displayName: "Select Go Version"
 
-- script: |
-    go build -v ./...
-  displayName: 'build.'
-- task: PublishBuildArtifacts@1
-  inputs:
-     artifactName: drop
-- task: Go@0
-  inputs:
-    command: 'test'
-    arguments: '-v'
-    workingDirectory: '$(System.DefaultWorkingDirectory)'
+      - script: |
+          set -e
+          export gopathbin=$(go env GOPATH)/bin
+          echo "##vso[task.prependpath]$gopathbin"
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          go install github.com/axw/gocov/gocov@v1.1.0
+          go install github.com/AlekSi/gocov-xml@v1.0.0
+          go install github.com/matm/gocov-html/cmd/gocov-html@v1.2.0
+        displayName: 'Install Dependencies'
+
+      - script: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+          golangci-lint --version
+          golangci-lint run
+        displayName: 'Install and Run GoLintCLI.'
+
+      - script: |
+          go build -v ./...
+        displayName: 'Build'
+
+      - script: |
+          go vet ./...
+        displayName: 'Vet'
+        
+
